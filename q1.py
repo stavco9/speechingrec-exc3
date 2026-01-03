@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 def set_log_probability(d):
     for k, v in d.items():
@@ -35,7 +36,10 @@ def viterbi(obs, states, start_p, trans_p, emit_p):
 
     (prob, state) = max([(V[-1][y], y) for y in states])
 
-    return (prob, path[state])
+    log_probabilities_matrix = pd.DataFrame(V)
+    log_probabilities_matrix["Char"] = obs
+
+    return (prob, path[state], log_probabilities_matrix)
 
 states = ('L', 'R')
 observations = "c c b a b d c a a c d b b".split()
@@ -49,12 +53,7 @@ emission_probability = {
    'R' : {'a': 0.35, 'b': 0.2, 'c': 0.15, 'd': 0.3},
    }
 
-#start_probability = set_log_probability(start_probability)
-#transition_probability = set_log_probability(transition_probability)
-#emission_probability = set_log_probability(emission_probability)
-
-
-#print(start_probability)
-#print(transition_probability)
-#print(emission_probability)
-print(viterbi(observations, states, start_probability, transition_probability, emission_probability))
+prob, path, log_probabilities_matrix = viterbi(observations, states, start_probability, transition_probability, emission_probability)
+print("Probability: ", prob)
+print("Path: ", path)
+print("Log Probabilities Matrix: \n", log_probabilities_matrix)
