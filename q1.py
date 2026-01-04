@@ -1,47 +1,48 @@
 import numpy as np
 import pandas as pd
 
-def set_log_probability(d):
-    for k, v in d.items():
-        if isinstance(v, dict):
-            d[k] = set_log_probability(v)
-        elif isinstance(v, float):
-            v = float(np.log10(v)) * -1
-        d[k] = v
-    return d
-
 def to_log(p):
-    return float(np.log10(p))
+    return float(np.log10(p)) * -1
 
 def viterbi(obs, states, start_p, trans_p, emit_p):
-    V = [{}]
-    path = {}
+    V = []
+    path = []
 
-    for y in states:
-        V[0][y] = to_log(start_p[y]) + to_log(emit_p[y][obs[0]])
-        path[y] = [y]
+    V.append([])
+
+    for idx, y in enumerate(states):
+        V[0].append(to_log(start_p[y]) + to_log(emit_p[y][obs[0]]))
+        path.append([idx])
 
     for t in range(1, len(obs)):
-        V.append({})
-        newpath = {}
+        V.append([])
+        newpath = []
 
-        for y in states:
-            (prob, state) = max(
-                [(V[t-1][y0] + to_log(trans_p[y0][y]) + to_log(emit_p[y][obs[t]]), y0) for y0 in states]
-            )
-            V[t][y] = prob
-            newpath[y] = path[state] + [y]
+        for idx, y in enumerate(states):
+            probs = [V[t-1][idx0] + to_log(trans_p[y0][y]) + to_log(emit_p[y][obs[t]]) for idx0, y0 in enumerate(states)]
+            best_prob, best_state = float(np.min(probs)), np.argmin(probs)
+            V[t].append(best_prob)
+            newpath.append(path[best_state] + [idx])
 
         path = newpath
 
-    (prob, state) = max([(V[-1][y], y) for y in states])
+    final_probs = [V[-1][idx] for idx in range(len(states))]
+    best_prob, best_state = float(np.min(final_probs)), np.argmin(final_probs)
+
+    best_path = [states[idx] for idx in path[best_state]]
 
     log_probabilities_matrix = pd.DataFrame(V)
+    log_probabilities_matrix.rename_axis("Time", axis=1, inplace=True)
+
+    for idx, state in enumerate(states):
+        log_probabilities_matrix.rename(columns={idx: f"Log Probability {state}"}, inplace=True)
+
     log_probabilities_matrix["Char"] = obs
+    log_probabilities_matrix["State"] = best_path
 
-    return (prob, path[state], log_probabilities_matrix)
+    return (best_prob, best_path, log_probabilities_matrix)
 
-states = ('L', 'R')
+states = ['L', 'R']
 observations = "c c b a b d c a a c d b b".split()
 start_probability = {'L': 0.5, 'R': 0.5}
 transition_probability = {
@@ -54,6 +55,6 @@ emission_probability = {
    }
 
 prob, path, log_probabilities_matrix = viterbi(observations, states, start_probability, transition_probability, emission_probability)
-print("Probability: ", prob)
-print("Path: ", path)
 print("Log Probabilities Matrix: \n", log_probabilities_matrix)
+print("Log Probability: ", prob)
+print("Best Decoding Path: ", path)
